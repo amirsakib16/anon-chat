@@ -1202,13 +1202,15 @@
 
       // Decrypt controls (only for encoded text messages)
       if (msg.encoded && msg.text) {
+        // Store encoded text in data attribute to avoid broken onclick strings
+        const safeEncoded = encodeURIComponent(msg.text);
         html += `
           <button class="decrypt-btn" onclick="toggleDecrypt('${msgId}')">
             🔓 Unlock
           </button>
-          <div class="decrypt-panel" id="panel-${msgId}">
+          <div class="decrypt-panel" id="panel-${msgId}" data-encoded="${safeEncoded}">
             <input class="decrypt-input" id="key-${msgId}" maxlength="3" placeholder="CODE" autocomplete="off" spellcheck="false" />
-            <button class="decrypt-apply" onclick="applyDecrypt('${msgId}', ${JSON.stringify(msg.text)})">Apply</button>
+            <button class="decrypt-apply" onclick="applyDecrypt('${msgId}')">Apply</button>
           </div>
         `;
       }
@@ -1228,9 +1230,11 @@
       }
     }
 
-    function applyDecrypt(msgId, encodedText) {
+    function applyDecrypt(msgId) {
+      const panel = document.getElementById("panel-" + msgId);
       const input = document.getElementById("key-" + msgId);
-      if (!input) return;
+      if (!panel || !input) return;
+
       const key = (input.value || "").trim().toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
 
       if (key.length !== 3) {
@@ -1239,16 +1243,23 @@
         return;
       }
 
+      // Read encoded text safely from data attribute
+      let encodedText = "";
+      try {
+        encodedText = decodeURIComponent(panel.getAttribute("data-encoded") || "");
+      } catch (e) {
+        toast("Failed to read message");
+        return;
+      }
+
       const decoded = decodeMessage(encodedText, key);
       const textEl = document.getElementById("text-" + msgId);
       if (textEl) {
         textEl.textContent = decoded;
-        textEl.style.color = "#34d399"; // green to show it was unlocked
+        textEl.style.color = "#34d399";
       }
 
-      // Hide the panel and change badge
-      const panel = document.getElementById("panel-" + msgId);
-      if (panel) panel.classList.remove("open");
+      panel.classList.remove("open");
 
       const bubble = textEl?.closest(".msg-bubble");
       const badge = bubble?.querySelector(".msg-encoded-badge");
@@ -1258,7 +1269,6 @@
         badge.style.background = "rgba(52, 211, 153, 0.12)";
       }
 
-      // Hide unlock button
       const btn = bubble?.querySelector(".decrypt-btn");
       if (btn) btn.style.display = "none";
 
