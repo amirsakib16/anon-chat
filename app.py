@@ -167,6 +167,7 @@ def handle_send_message(data):
     text = (data.get("text") or "").strip()
     image = data.get("image")  # base64 data URL or None
     nickname = (data.get("nickname") or "Anon").strip()[:24]
+    encoded = bool(data.get("encoded"))
 
     if not room_code or room_code not in ROOMS:
         emit("error", {"message": "Room no longer exists"})
@@ -186,6 +187,7 @@ def handle_send_message(data):
         "nickname": nickname,
         "text": text[:2000] if text else "",
         "image": image,
+        "encoded": encoded,
         "timestamp": datetime.utcnow().isoformat() + "Z",
         "sid": request.sid,
     }
